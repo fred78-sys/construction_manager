@@ -1,0 +1,16 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Firebase and Expo secrets/build output
+.firebase/
+.expo/
+apps/mobile/.env
+functions/.env
+functions/node_modules/
+functions/lib/
