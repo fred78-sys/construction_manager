@@ -1,0 +1,3 @@
+{
+  "expo": { "name": "SiteFlow", "slug": "siteflow-construction", "scheme": "siteflow", "version": "1.0.0", "orientation": "portrait", "userInterfaceStyle": "light", "plugins": ["expo-router"], "android": { "package": "com.company.siteflow", "permissions": ["CAMERA", "READ_MEDIA_IMAGES"] } }
+}
