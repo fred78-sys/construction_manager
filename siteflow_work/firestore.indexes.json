@@ -1,0 +1,8 @@
+{
+  "indexes": [
+    { "collectionGroup": "tasks", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "projectId", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "dueAt", "order": "ASCENDING" }] },
+    { "collectionGroup": "dailyLogs", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "projectId", "order": "ASCENDING" }, { "fieldPath": "workDate", "order": "DESCENDING" }] },
+    { "collectionGroup": "requisitions", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "projectId", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] }
+  ],
+  "fieldOverrides": []
+}

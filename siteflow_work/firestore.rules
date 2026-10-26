@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function companyId() { return request.auth.token.companyId; }
+    function inCompany(cid) { return signedIn() && companyId() == cid && request.auth.token.accountStatus == 'active'; }
+    function role() { return request.auth.token.role; }
+    function isAdmin() { return role() == 'company_admin'; }
+    function isHr() { return role() == 'hr_admin' || isAdmin(); }
+    function isDirector() { return role() == 'director' || isAdmin(); }
+    function member(cid, pid) {
+      return inCompany(cid) && exists(/databases/$(database)/documents/companies/$(cid)/projectMembers/$(request.auth.uid + '_' + pid)) &&
+        get(/databases/$(database)/documents/companies/$(cid)/projectMembers/$(request.auth.uid + '_' + pid)).data.active == true;
+    }
+    function canReadProject(cid, pid) { return (inCompany(cid) && isDirector()) || member(cid, pid); }
+    function canManageProject(cid, pid) {
+      return inCompany(cid) && (isAdmin() || (role() == 'project_manager' && member(cid, pid) &&
+        get(/databases/$(database)/documents/companies/$(cid)/projectMembers/$(request.auth.uid + '_' + pid)).data.accessLevel in ['manager','admin']));
+    }
+    match /companies/{cid} {
+      allow read: if inCompany(cid) && (isDirector() || role() == 'hr_admin');
+      allow write: if inCompany(cid) && isAdmin();
+      match /users/{uid} {
+        allow read: if inCompany(cid) && (request.auth.uid == uid || isHr() || isDirector());
+        allow create, delete: if false; // Admin SDK only.
+        allow update: if inCompany(cid) && request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','phone','photoPath','updatedAt']);
+      }
+      match /departments/{departmentId} {
+        allow read: if inCompany(cid);
+        allow write: if inCompany(cid) && isHr();
+      }
+      match /projects/{projectId} {
+        allow read: if canReadProject(cid, projectId);
+        allow create: if inCompany(cid) && (isAdmin() || role() == 'director');
+        allow update: if canManageProject(cid, projectId);
+        allow delete: if inCompany(cid) && isAdmin();
+      }
+      match /projectMembers/{membershipId} {
+        allow read: if inCompany(cid) && (resource.data.uid == request.auth.uid || isHr() || isDirector() || canReadProject(cid, resource.data.projectId));
+        allow write: if inCompany(cid) && (isHr() || isDirector() || canManageProject(cid, request.resource.data.projectId));
+      }
+      match /channels/{channelId} {
+        function channelMember() { return inCompany(cid) && request.auth.uid in resource.data.memberUids; }
+        allow read: if channelMember() || (inCompany(cid) && isDirector());
+        allow create: if inCompany(cid) && request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.memberUids is list && (isAdmin() || isDirector() || role() == 'project_manager');
+        allow update: if channelMember() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','updatedAt','lastMessageAt']);
+        allow delete: if inCompany(cid) && isAdmin();
+        match /messages/{messageId} {
+          function isChannelMember() {
+            return inCompany(cid) && get(/databases/$(database)/documents/companies/$(cid)/channels/$(channelId)).data.memberUids.hasAny([request.auth.uid]);
+          }
+          allow read: if isChannelMember();
+          allow create: if isChannelMember() && request.resource.data.senderUid == request.auth.uid &&
+            request.resource.data.body is string && request.resource.data.body.size() <= 10000;
+          allow update: if isChannelMember() && resource.data.senderUid == request.auth.uid &&
+            request.time < resource.data.createdAt + duration.value(15, 'm') &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body','editedAt']);
+          allow delete: if false;
+        }
+      }
+      // Default deny for operational collections until explicit collection rules are added.
+      match /{document=**} { allow read, write: if false; }
+    }
+  }
+}

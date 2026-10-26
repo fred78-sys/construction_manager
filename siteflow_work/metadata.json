@@ -1,0 +1,6 @@
+{
+  "name": "SiteFlow Kenya - Construction Management System",
+  "description": "Kenyan construction management platform for contractors, project managers, field superintendents, and clients. Manage NCA & NEMA compliant sites, daily fundi & vibarua logs, BQ budgets in KES, M-Pesa expenses, and permits across Nairobi & Kenyan counties.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

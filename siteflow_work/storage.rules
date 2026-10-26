@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function activeCompany(cid) {
+      return request.auth != null && request.auth.token.companyId == cid && request.auth.token.accountStatus == 'active';
+    }
+    function projectMember(cid, pid) {
+      return firestore.exists(/databases/(default)/documents/companies/$(cid)/projectMembers/$(request.auth.uid + '_' + pid)) &&
+        firestore.get(/databases/(default)/documents/companies/$(cid)/projectMembers/$(request.auth.uid + '_' + pid)).data.active == true;
+    }
+    match /companies/{cid}/projects/{pid}/{allPaths=**} {
+      allow read: if activeCompany(cid) && projectMember(cid, pid);
+      allow write: if activeCompany(cid) && projectMember(cid, pid) && request.resource.size < 25 * 1024 * 1024 &&
+        request.resource.contentType.matches('(image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.*)');
+    }
+    match /companies/{cid}/avatars/{uid}/{fileName} {
+      allow read: if activeCompany(cid);
+      allow write: if activeCompany(cid) && request.auth.uid == uid && request.resource.size < 5 * 1024 * 1024 && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
